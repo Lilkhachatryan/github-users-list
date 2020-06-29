@@ -10,12 +10,13 @@ import Avatar from '@material-ui/core/Avatar';
 import IconButton from '@material-ui/core/IconButton';
 import DeleteIcon from '@material-ui/icons/Delete';
 import EditIcon from '@material-ui/icons/Edit';
-import SimpleModal from "./SimpleModal";
-import { getUsers } from "../utils/endpoints";
+import SimpleModal from "../SimpleModal";
+import EditUser from "../EditUser";
+import { getUsers } from "../../utils/endpoints";
+import Loading from "../Loading";
 
 const styles = () => ({
     root: {
-        // width: '100%',
         marginTop: 3,
         padding: 40,
         overflowX: 'auto',
@@ -39,7 +40,9 @@ class UsersList extends React.Component {
             perPage: 10,
             page: 1,
         },
-        isOpen: false
+        isOpen: false,
+        loading: false,
+        error: false
     };
 
     componentDidMount() {
@@ -47,10 +50,15 @@ class UsersList extends React.Component {
     }
 
     getUsersFromServer = () => {
+        this.setState({ loading: true });
         getUsers(this.state.params)
             .then((users) => {
                 this.setState({ users })
             })
+            .catch(() => {
+                this.setState({ error: true })
+            });
+        this.setState({ loading: false })
     };
 
     handleEditClick = (user) => {
@@ -62,27 +70,33 @@ class UsersList extends React.Component {
         this.setState({ users: newUsers });
     };
 
-    handleClose = (user) => {
+    handleClose = () => {
         this.setState({ isOpen: false, user: {} })
     };
 
     handleFiledChange = (e) => {
         let { name, value } = e.target;
-        this.setState({user: { ...this.state.user, [name]: value }})
+        this.setState({ user: { ...this.state.user, [name]: value } })
     };
 
     updateUser = () => {
         const { user, users } = this.state;
         if (!user.login) return;
         let newUsers = users.map(item => item.id === user.id ? user : item);
-        this.setState({ users: newUsers });
-        this.handleClose()
+        this.setState({
+            users: newUsers,
+            isOpen: false, user: {}
+        });
     };
 
 
     render() {
         const { classes } = this.props;
-        const { users, isOpen, user } = this.state;
+        const { users, isOpen, user, loading, error } = this.state;
+
+        if (error) return (<div>Something went wrong.</div>);
+
+        if (loading) return (<Loading />);
 
         return (
             <Paper className={classes.root}>
@@ -100,17 +114,21 @@ class UsersList extends React.Component {
                         {users.map(user => (
                             <TableRow key={user.id}>
                                 <TableCell component="th" scope="row">
-                                    <Avatar alt="Remy Sharp" src={user.avatar_url} className={classes.avatar} />
+                                    <Avatar alt="Remy Sharp"
+                                            src={user.avatar_url}
+                                            className={classes.avatar} />
                                 </TableCell>
                                 <TableCell>{user.login}</TableCell>
                                 <TableCell>{user.type}</TableCell>
                                 <TableCell align="right">
-                                    <IconButton aria-label="Delete" onClick={() => this.handleEditClick(user)}>
+                                    <IconButton aria-label="Delete"
+                                                onClick={() => this.handleEditClick(user)}>
                                         <EditIcon />
                                     </IconButton>
                                 </TableCell>
                                 <TableCell align="right">
-                                    <IconButton aria-label="Delete" onClick={() => this.handleDeleteClick(user)}>
+                                    <IconButton aria-label="Delete"
+                                                onClick={() => this.handleDeleteClick(user)}>
                                         <DeleteIcon />
                                     </IconButton>
                                 </TableCell>
@@ -119,6 +137,7 @@ class UsersList extends React.Component {
                     </TableBody>
                 </Table>
                 <SimpleModal
+                    children={EditUser}
                     handleClose={this.handleClose}
                     handleFiledChange={this.handleFiledChange}
                     updateUser={this.updateUser}
